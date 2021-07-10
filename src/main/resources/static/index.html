@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta property="og:title" content="TODAY NOICE">
+    <meta property="og:description" content="해야할일들을 메모해보세요">
+    <meta property="og:image" content="images/og_notice.png">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+
+    <title>TODAY NOTICE</title>
+
+    <script type="text/javascript" th:inline="javascript">
+        $(document).ready(function () {
+            getNotice();
+
+            console.log([[${session.MyMy}]])
+            if ([[${session.MyMy}]] == null) {
+                let temp_html = `<button className="login-btn" id="login-btn" onClick="location.href='/user/login'">로그인</button>`
+                $('#login-inout').append(temp_html);
+            }else{
+                let temp_html = `<button className="login-btn" id="login-btn" onClick="location.href='/user/logout'">로그아웃</button>`
+                $('#login-inout').append(temp_html);
+            }
+
+        })
+
+        function input(){
+            if ([[${session.MyMy}]] == null) {
+                alert("로그인후이용해주세요")
+                location.href = "/user/login"
+            }
+        }
+
+
+        function postNotice(){
+            let title = $('#titleInput').val();
+            let contents = $('#contentsInput').val();
+            let username = $('#usernameInput').val();
+            if ((title == '') || (contents == '') || (username == '')) {
+                alert("빈칸이 있습니다. 내용을입력하여주세요")
+                return;
+            }
+            // xss 공격대비
+            if ((title.includes("<")) || (contents.includes("<")) || (username.includes("<"))) {
+                alert("부적절한 표현입니다. 다시 작성해주세요")
+                return;
+            }
+            let data = {'title': title,'username': username, 'contents': contents, 'userID': [[${session.MyMy}]] };
+            console.log(data)
+
+            $.ajax({
+                type: "POST",
+                url: "/api/notices",
+                contentType: "application/json", // JSON 형식으로 전달함을 알리기
+                data: JSON.stringify(data),
+                success: function (response){
+                    alert("등록성공")
+                    window.location.reload();
+                }
+            });
+        }
+
+        function getNotice() {
+            $.ajax({
+                type: 'GET',
+                url: '/api/notices',
+                success: function (response) {
+                    for (let i = 0; i < response.length; i++) {
+                        let notice = response[i];
+                        let id = notice.id;
+                        let title = notice.title;
+                        let username = notice.username;
+                        let contents = notice.contents;
+                        let modifiedAt = notice.modifiedAt;
+                        let time = modifiedAt.split("T")[0];
+                        addHTML(id,title,username, contents, time)
+
+                    }
+                }
+            })
+        }
+
+        function addHTML(id, title, username, contents, time) {
+            // 1. HTML 태그를 만듭니다.
+            let tempHtml = `<a id="post-${id}" href="/notices/${id}">
+                                <h2 class="post-title">${title}</h2>
+                            </a>
+                            <p class="post-meta">
+                                Posted by
+                                <span style="color: blue">${username}</span>
+                                ${time}
+                                <button id="${id}-delete" class="btn" style="background-color: coral"  onclick="deleteOne('${id}')">삭제버튼</button>
+                            </p>
+                            <hr class="my-4"/>`
+            $('#getNotice').append(tempHtml);
+        }
+        function deleteOne(id) {
+            // 1. DELETE /api/memos/{id} 에 요청해서 메모를 삭제합니다.
+            $.ajax({
+                type: "DELETE",
+                url: `/api/notices/${id}`,
+                success: function (response) {
+                    alert('메시지 삭제에 성공하였습니다.');
+                    window.location.reload();
+                }
+            })
+        }
+
+    </script>
+</head>
+<body>
+<div class="jumbotron">
+    <h1 class="display-4">TODAY NOTICE</h1>
+    <div id="login-inout">
+    </div>
+    <div class="form-group">
+        <label>오늘의 할일</label>
+        <input type="email" class="form-control" id="titleInput" placeholder="" onclick="input()">
+    </div>
+    <div class="form-group">
+        <label>작성자명</label>
+        <input type="email" class="form-control" id="usernameInput" placeholder="" onclick="input()">
+    </div>
+    <div class="form-group">
+        <label>자세한 일정을 쓰세요</label>
+        <textarea class="form-control" id="contentsInput" rows="3" onclick="input()"></textarea>
+    </div>
+    <p class="lead">
+        <button class="btn btn-primary" onclick="postNotice()">등록하기</button>
+    </p>
+</div>
+<hr class="my-4" />
+<div class="post-preview" id ="getNotice">
+</div>
+
+
+</body>
+</html>
